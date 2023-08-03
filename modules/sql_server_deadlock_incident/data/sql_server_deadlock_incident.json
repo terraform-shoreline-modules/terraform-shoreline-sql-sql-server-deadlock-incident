@@ -1,0 +1,178 @@
+{
+  "name": "sql_server_deadlock_incident",
+  "description": "A SQL Server deadlock incident occurs when two or more processes are blocked and waiting on each other to release a resource. This results in a situation where none of the processes can continue executing, causing a system slowdown or complete system failure. The incident requires immediate attention from a software engineer to identify and resolve the issue.",
+  "params": [
+    {
+      "name": "SESSION_ID",
+      "value": ""
+    },
+    {
+      "name": "DATABASE_NAME",
+      "value": ""
+    },
+    {
+      "name": "TABLE_NAME",
+      "value": ""
+    },
+    {
+      "name": "COLUMN_NAME",
+      "value": ""
+    },
+    {
+      "name": "SERVER_NAME",
+      "value": ""
+    },
+    {
+      "name": "HOST_NAME",
+      "value": ""
+    },
+    {
+      "name": "K8S_CLUSTER_NAME",
+      "value": ""
+    },
+    {
+      "name": "NAMESPACE",
+      "value": ""
+    }
+  ],
+  "cells": [
+    {
+      "name": "cell_1",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## SQL Server Deadlock Incident\nA SQL Server deadlock incident occurs when two or more processes are blocked and waiting on each other to release a resource. This results in a situation where none of the processes can continue executing, causing a system slowdown or complete system failure. The incident requires immediate attention from a software engineer to identify and resolve the issue."
+    },
+    {
+      "name": "cell_2",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Shell command to retrieve process id for sql server instance."
+    },
+    {
+      "name": "cell_3",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_get_sql_pid()"
+    },
+    {
+      "name": "cell_4",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Get active SQL Server sessions and their status"
+    },
+    {
+      "name": "cell_5",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sqlcmd -S ${SERVER_NAME} -E -Q \"SELECT session_id, status FROM sys.dm_exec_sessions\"`"
+    },
+    {
+      "name": "cell_6",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Get currently executing SQL statements for a given session ID"
+    },
+    {
+      "name": "cell_7",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sqlcmd -S ${SERVER_NAME} -E -Q \"SELECT t.text FROM sys.dm_exec_requests r CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) t WHERE r.session_id = ${SESSION_ID}\"`"
+    },
+    {
+      "name": "cell_8",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Get information about current locks and blocking chains"
+    },
+    {
+      "name": "cell_9",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sqlcmd -S ${SERVER_NAME} -E -Q \"SELECT blocking_session_id, wait_type, last_wait_type, wait_resource, resource_description FROM sys.dm_exec_requests WHERE blocking_session_id <> 0\"`"
+    },
+    {
+      "name": "cell_10",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Get information about deadlocks that have occurred"
+    },
+    {
+      "name": "cell_11",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sqlcmd -S ${SERVER_NAME} -E -Q \"SELECT * FROM sys.event_log WHERE event_type = 'deadlock'\"`"
+    },
+    {
+      "name": "cell_12",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Get current SQL Server performance statistics"
+    },
+    {
+      "name": "cell_13",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `typeperf \"\\SQLServer:General Statistics\\User Connections\" \"\\SQLServer:Locks(_Total)\\Number of Deadlocks/sec\" \"\\SQLServer:Transactions(_Total)\\Transactions/sec\"`"
+    },
+    {
+      "name": "cell_14",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Get current SQL Server performance statistics"
+    },
+    {
+      "name": "cell_15",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `typeperf \"\\SQLServer:General Statistics\\User Connections\" \"\\SQLServer:Locks(_Total)\\Number of Deadlocks/sec\" \"\\SQLServer:Transactions(_Total)\\Transactions/sec\"`"
+    },
+    {
+      "name": "cell_16",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Multiple transactions trying to access the same resource simultaneously."
+    },
+    {
+      "name": "cell_17",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_lock_analysis_script($SERVER_NAME)"
+    },
+    {
+      "name": "cell_18",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Sql query to retrieve information about currently running or suspended sessions and associated queries."
+    },
+    {
+      "name": "cell_19",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_get_running_requests()"
+    },
+    {
+      "name": "cell_20",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Avoid using NOLOCK or READ UNCOMMITTED transaction isolation levels as this can lead to dirty reads and make deadlocks worse."
+    },
+    {
+      "name": "cell_21",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_check_locks($DATABASE_NAME, $TABLE_NAME, $COLUMN_NAME, $SERVER_NAME)"
+    },
+    {
+      "name": "cell_22",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Increase the timeout value for transactions to allow more time for resolving deadlocks."
+    },
+    {
+      "name": "cell_23",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_sql_timeout_script($SERVER_NAME)"
+    }
+  ]
+}
